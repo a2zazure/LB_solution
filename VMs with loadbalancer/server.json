@@ -1,0 +1,173 @@
+﻿{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "avsetName": {
+      "type": "string",
+      "minLength": 1
+    },
+    "vm1Name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "vm1AdminUserName": {
+      "type": "string",
+      "minLength": 1
+    },
+    "vm1AdminPassword": {
+      "type": "securestring"
+    },
+    "vm1WindowsOSVersion": {
+      "type": "string",
+      "defaultValue": "2012-R2-Datacenter",
+      "allowedValues": [
+        "2008-R2-SP1",
+        "2012-Datacenter",
+        "2012-R2-Datacenter",
+        "Windows-Server-Technical-Preview"
+      ]
+    },
+    "storageAccountName": {
+      "type": "string",
+      "defaultValue": "storagel7ikenpjb7kai"
+    },
+    "storageAccountResourceGroup": {
+      "type": "string",
+      "defaultValue": "LB_solution"
+    },
+    "virtualNetworkName": {
+      "type": "string",
+      "defaultValue": "network"
+    },
+    "virtualNetworkResourceGroup": {
+      "type": "string",
+      "defaultValue": "LB_solution"
+    },
+    "pipDnsName": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "variables": {
+    "vm1ImagePublisher": "MicrosoftWindowsServer",
+    "vm1ImageOffer": "WindowsServer",
+    "vm1OSDiskName": "vm1OSDisk",
+    "vm1VmSize": "Standard_D2_v2",
+    "vm1VnetID": "[resourceId(parameters('virtualNetworkResourceGroup'), 'Microsoft.Network/virtualNetworks', parameters('virtualNetworkName'))]",
+    "vm1SubnetRef": "[concat(variables('vm1VnetID'), '/subnets/', 'DC1')]",
+    "vm1StorageAccountContainerName": "vhds",
+    "vm1NicName": "[concat(parameters('vm1Name'), '-nic')]",
+    "pipName": "pip",
+    "avsetName": "avset"
+  },
+  "resources": [
+    {
+      "name": "[parameters('avsetName')]",
+      "type": "Microsoft.Compute/availabilitySets",
+      "location": "[resourceGroup().location]",
+      "apiVersion": "2015-06-15",
+      "dependsOn": [ ],
+      "tags": {
+        "displayName": "avset"
+      },
+      "properties": {
+        "platformUpdateDomainCount": 1,
+        "platformFaultDomainCount": 1
+      }
+    },
+    {
+      "name": "[variables('vm1NicName')]",
+      "type": "Microsoft.Network/networkInterfaces",
+      "location": "northeurope",
+      "apiVersion": "2016-03-30",
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/publicIPAddresses', variables('pipName'))]" ],
+      "tags": {
+        "displayName": "vm1Nic"
+      },
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "ipconfig1",
+            "properties": {
+              "privateIPAllocationMethod": "Dynamic",
+              "subnet": {
+                "id": "[variables('vm1SubnetRef')]"
+              },
+              "publicIPAddress": {
+                "id": "[resourceId('Microsoft.Network/publicIPAddresses', variables('pipName'))]"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "[parameters('vm1Name')]",
+      "type": "Microsoft.Compute/virtualMachines",
+      "location": "northeurope",
+      "apiVersion": "2015-06-15",
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/networkInterfaces', variables('vm1NicName'))]",
+        "[resourceId('Microsoft.Compute/availabilitySets', variables('avsetName'))]"
+      ],
+      "tags": {
+        "displayName": "vm1"
+      },
+      "properties": {
+        "availabilitySet": {
+          "id": "[resourceId('Microsoft.Compute/availabilitySets', parameters('avsetName'))]"
+        },
+        "hardwareProfile": {
+          "vmSize": "[variables('vm1VmSize')]"
+        },
+        "osProfile": {
+          "computerName": "[parameters('vm1Name')]",
+          "adminUsername": "[parameters('vm1AdminUsername')]",
+          "adminPassword": "[parameters('vm1AdminPassword')]"
+        },
+        "storageProfile": {
+          "imageReference": {
+            "publisher": "[variables('vm1ImagePublisher')]",
+            "offer": "[variables('vm1ImageOffer')]",
+            "sku": "[parameters('vm1WindowsOSVersion')]",
+            "version": "latest"
+          },
+          "osDisk": {
+            "name": "vm1OSDisk",
+            "vhd": {
+              "uri": "[concat(reference(resourceId(parameters('storageAccountResourceGroup'), 'Microsoft.Storage/storageAccounts', parameters('storageAccountName')), '2016-01-01').primaryEndpoints.blob, variables('vm1StorageAccountContainerName'), '/', variables('vm1OSDiskName'), '.vhd')]"
+            },
+            "caching": "ReadWrite",
+            "createOption": "FromImage"
+          }
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces', variables('vm1NicName'))]"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "[variables('pipName')]",
+      "type": "Microsoft.Network/publicIPAddresses",
+      "location": "northeurope",
+      "apiVersion": "2016-03-30",
+      "dependsOn": [ ],
+      "tags": {
+        "displayName": "pip"
+      },
+      "properties": {
+        "publicIPAllocationMethod": "Dynamic",
+        "dnsSettings": {
+          "domainNameLabel": "[parameters('pipDnsName')]"
+        }
+      }
+    }
+  ],
+  "outputs": {
+  }
+}

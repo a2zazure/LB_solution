@@ -1,0 +1,21 @@
+﻿{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "avsetName": {
+      "value": "avset"
+    },
+    "vm1Name": {
+      "value": "vm1Name"
+    },
+    "vm1AdminUserName": {
+      "value": "samadmin"
+    },
+    "vm1AdminPassword": {
+      "value": "Jan@2018P@ssw0rd"
+    },
+    "pipDnsName": {
+      "value": "pip12345sam"
+    }
+  }
+}
